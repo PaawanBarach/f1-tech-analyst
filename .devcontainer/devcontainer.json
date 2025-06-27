@@ -1,0 +1,11 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/python:3.10",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "forwardPorts": [80, 7860],
+  "envFile": ".env",
+  "features": {},
+  "remoteUser": "vscode",
+  "runArgs": [
+  "--sysctl", "fs.inotify.max_user_watches=524288"
+    ]   
+}

@@ -1,23 +1,26 @@
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from langchain.chains import RetrievalQA, ConversationChain
+
+# LLM: switch to HuggingFaceHub using your HF_TOKEN env var
 from langchain import HuggingFaceHub
-from utils.cache import get_cached_response, set_cached_response
+
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+llm = HuggingFaceHub(
+    repo_id="tiiuae/falcon-7b-instruct",
+    huggingfacehub_api_token=HF_TOKEN,
+    model_kwargs={"temperature": 0}
+)
+
+# RAG + Memory
+from langchain.chains import RetrievalQA, ConversationChain
 from memory import CONV_MEMORY
+from vectorstore import STORE, upsert_texts
 from ingestion import run_full_ingest
 from articles import generate_technical_article
-from vectorstore import init_collections
-import os
+from utils.cache import get_cached_response, set_cached_response
 
-# 1. Initialize your vector store and LLM
-STORE = init_collections()
-llm = HuggingFaceHub(
-   repo_id="tiiuae/falcon-7b-instruct",
-   huggingfacehub_api_token=os.environ["HF_TOKEN"],
-   model_kwargs={"temperature":0}
- )
-
-# 2. Build the Retrieval-Augmented QA chain
+# Build the RetrievalQA chain
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",
@@ -25,7 +28,7 @@ qa_chain = RetrievalQA.from_chain_type(
     return_source_documents=True
 )
 
-# 3. Wrap in a ConversationChain for short-term memory
+# Wrap in ConversationChain for short-term memory
 conv_chain = ConversationChain(
     llm=llm,
     memory=CONV_MEMORY,
@@ -33,45 +36,39 @@ conv_chain = ConversationChain(
 )
 
 def answer_question(query: str):
-    """
-    1) Check disk-cache for this exact query.
-    2) If cached, return immediately.
-    3) Otherwise run RAG → cache → return.
-    Also pushes each query/answer into the conversation memory.
-    """
-    # 1) Cache lookup
+    # 1) Cache check
     cached = get_cached_response(query)
     if cached:
-        return cached  # (answer: str, sources: List[str])
+        return cached  # (answer, sources)
 
-    # 2) Retrieval + LLM
+    # 2) RAG call
     rag_out = qa_chain({"query": query})
     answer = rag_out["result"]
     sources = [doc.page_content[:200] for doc in rag_out["source_documents"]]
 
-    # 3) Update conversation memory
+    # 3) Conversation memory
     conv_chain.predict(query=query)
 
-    # 4) Cache full response
+    # 4) Cache response
     set_cached_response(query, (answer, sources))
     return answer, sources
 
-# 4. Scheduler: ingestion every 10 minutes
-sched = BackgroundScheduler()
-sched.add_job(
-    run_full_ingest,
-    "interval",
-    minutes=10,
-    id="ingest_job",
-    replace_existing=True
-)
-
-# 5. Scheduler: daily technical-article at 23:00 UTC
-sched.add_job(
-    generate_technical_article,
-    CronTrigger(hour=23, minute=0),
-    id="daily_article",
-    replace_existing=True
-)
-
-sched.start()
+# Scheduler setup (only if *not* in Codespace)
+if "CODESPACE_NAME" not in os.environ:
+    sched = BackgroundScheduler()
+    # Ingest every 10 minutes
+    sched.add_job(
+        run_full_ingest,
+        "interval",
+        minutes=10,
+        id="ingest_job",
+        replace_existing=True
+    )
+    # Daily article at 23:00 UTC
+    sched.add_job(
+        generate_technical_article,
+        CronTrigger(hour=23, minute=0),
+        id="daily_article",
+        replace_existing=True
+    )
+    sched.start()
