@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  f1-analyst:
+    image: f1-tech-analyst
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"      # FastAPI
+      - "7860:7860"  # Gradio
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    volumes:
+      - ./:/app
+      - ./.cache:/app/.cache
+      - ./articles:/app/articles
+    command: >
+      bash -lc
+      "uvicorn main:app --host 0.0.0.0 --port 80 --reload"

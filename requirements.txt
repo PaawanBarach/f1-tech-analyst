@@ -1,0 +1,29 @@
+# Core
+fastapi==0.95.2
+uvicorn==0.22.0
+gradio
+langchain==0.0.299
+sentence-transformers==2.2.2
+huggingface-hub
+
+# Storage & retrieval
+pymilvus==2.2.0
+diskcache
+
+# Data ingestion
+requests==2.31.0
+beautifulsoup4==4.12.2
+PyPDF2==3.0.0
+Pillow==10.0.1
+
+# Agents & scheduling
+APScheduler
+schedule
+
+# Utils
+numpy==1.25.2
+matplotlib==3.8.2
+
+# Optional (for Discord/Telegram)
+python-telegram-bot==20.5
+discord.py

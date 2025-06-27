@@ -1,0 +1,15 @@
+# Define your sources here; add/remove at will.
+rss_feeds:
+  - "https://www.formula1.com/en/latest.rss"
+  - "https://www.motorsport.com/rss/f1/"
+  - "https://www.autosport.com/feed/news/"
+apis:
+  ergast: "http://ergast.com/api/f1"
+  weather: "https://api.open-meteo.com/v1/forecast"
+pdf_dirs:
+  - "./data/pdfs"
+image_dirs:
+  - "./data/images"
+dedupe_threshold: 0.8
+json_feeds:
+   - "https://www.formula1.com/en/latest.json"
